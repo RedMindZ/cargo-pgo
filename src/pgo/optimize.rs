@@ -26,8 +26,8 @@ use crate::workspace::CargoContext;
 pub struct PgoOptimizeArgs {
     /// Cargo command that will be used for PGO-optimized compilation.
     #[clap(value_enum, default_value = "build")]
-    command: CargoCommand,
-    cargo_args: Vec<String>,
+    pub command: CargoCommand,
+    pub cargo_args: Vec<String>,
 }
 
 /// Merges PGO profiles and creates RUSTFLAGS that use them.
@@ -39,12 +39,12 @@ pub fn prepare_pgo_optimization_flags(pgo_env: &PgoEnv, pgo_dir: &Path) -> anyho
     let target_file = merge_profiles(pgo_env, &stats, pgo_dir)?;
 
     Ok(format!(
-        "-Cprofile-use={} -Cllvm-args=-pgo-warn-missing-function",
+        "-Cprofile-use={}-Cllvm-args=-pgo-warn-missing-function",
         target_file.display()
     ))
 }
 
-pub fn pgo_optimize(ctx: CargoContext, args: PgoOptimizeArgs) -> anyhow::Result<()> {
+pub fn pgo_optimize(ctx: &CargoContext, args: PgoOptimizeArgs) -> anyhow::Result<()> {
     let pgo_dir = ctx.get_pgo_directory()?;
     let pgo_env = get_pgo_env()?;
 

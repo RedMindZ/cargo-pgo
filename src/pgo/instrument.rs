@@ -12,14 +12,14 @@ use colored::Colorize;
 pub struct PgoInstrumentArgs {
     /// Cargo command that will be used for PGO-instrumented compilation.
     #[clap(value_enum, default_value = "build")]
-    command: CargoCommand,
+    pub command: CargoCommand,
 
     /// Do not remove profiles that were gathered during previous runs.
     #[clap(long, takes_value = false)]
-    keep_profiles: bool,
+    pub keep_profiles: bool,
 
     /// Additional arguments that will be passed to the executed `cargo` command.
-    cargo_args: Vec<String>,
+    pub cargo_args: Vec<String>,
 }
 
 #[derive(clap::Parser, Debug)]
@@ -48,7 +48,7 @@ impl PgoInstrumentShortcutArgs {
     }
 }
 
-pub fn pgo_instrument(ctx: CargoContext, args: PgoInstrumentArgs) -> anyhow::Result<()> {
+pub fn pgo_instrument(ctx: &CargoContext, args: PgoInstrumentArgs) -> anyhow::Result<()> {
     let pgo_dir = ctx.get_pgo_directory()?;
 
     if !args.keep_profiles {

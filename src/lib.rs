@@ -10,14 +10,14 @@ pub mod clean;
 pub(crate) mod cli;
 pub mod pgo;
 pub(crate) mod utils;
-pub(crate) mod workspace;
+pub mod workspace;
 
 use anyhow::anyhow;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 
-pub use workspace::get_cargo_ctx;
+// pub use workspace::get_cargo_ctx;
 
 pub(crate) fn resolve_binary(path: &Path) -> anyhow::Result<PathBuf> {
     Ok(which::which(path)?)

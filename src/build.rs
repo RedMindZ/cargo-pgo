@@ -1,7 +1,6 @@
 use crate::get_default_target;
 use cargo_metadata::{Artifact, Message, MessageIter};
 use std::collections::HashMap;
-use std::fmt::Write as WriteFmt;
 use std::io::{BufReader, Write};
 use std::process::{Child, ChildStdout, Command, Stdio};
 
@@ -9,11 +8,6 @@ use std::process::{Child, ChildStdout, Command, Stdio};
 struct CargoArgs {
     filtered: Vec<String>,
     contains_target: bool,
-}
-
-enum ReleaseMode {
-    AddRelease,
-    NoRelease,
 }
 
 pub struct RunningCargo {
@@ -38,24 +32,23 @@ impl RunningCargo {
     }
 }
 
-/// Start a `cargo` command in release mode with the provided RUSTFLAGS and Cargo arguments.
+/// Start a `cargo` command with the provided RUSTFLAGS and Cargo arguments.
 pub fn cargo_command_with_flags(
     command: CargoCommand,
     flags: &str,
     cargo_args: Vec<String>,
 ) -> anyhow::Result<RunningCargo> {
-    let mut rustflags = std::env::var("RUSTFLAGS").unwrap_or_default();
-    write!(&mut rustflags, " {}", flags).unwrap();
+    let mut encoded_flags = std::env::var("CARGO_ENCODED_RUSTFLAGS").unwrap_or_default();
+    if !encoded_flags.is_empty() {
+        // CARGO_ENCODED_RUSTFLAGS uses the ASCII Separator (31) character instead of spaces
+        encoded_flags.push('');
+    }
+    encoded_flags.push_str(flags);
 
     let mut env = HashMap::default();
-    env.insert("RUSTFLAGS".to_string(), rustflags);
+    env.insert("CARGO_ENCODED_RUSTFLAGS".to_string(), encoded_flags);
 
-    let release_mode = match command {
-        CargoCommand::Bench => ReleaseMode::NoRelease,
-        _ => ReleaseMode::AddRelease,
-    };
-
-    let mut child = cargo_command(command, cargo_args, env, release_mode)?;
+    let mut child = cargo_command(command, cargo_args, env)?;
     let stdout = child.stdout.take().unwrap();
     Ok(RunningCargo {
         child,
@@ -63,12 +56,11 @@ pub fn cargo_command_with_flags(
     })
 }
 
-/// Spawn `cargo` command in release mode with the provided env variables and Cargo arguments.
+/// Spawn `cargo` command with the provided env variables and Cargo arguments.
 fn cargo_command(
     cargo_cmd: CargoCommand,
     cargo_args: Vec<String>,
     env: HashMap<String, String>,
-    release_mode: ReleaseMode,
 ) -> anyhow::Result<Child> {
     let parsed_args = parse_cargo_args(cargo_args);
 
@@ -81,13 +73,6 @@ fn cargo_command(
     command.stdin(Stdio::inherit());
     command.stdout(Stdio::piped());
     command.stderr(Stdio::inherit());
-
-    match release_mode {
-        ReleaseMode::AddRelease => {
-            command.arg("--release");
-        }
-        ReleaseMode::NoRelease => {}
-    }
 
     // --target is passed to avoid instrumenting build scripts
     // See https://doc.rust-lang.org/rustc/profile-guided-optimization.html#a-complete-cargo-workflow
@@ -117,10 +102,6 @@ fn parse_cargo_args(cargo_args: Vec<String>) -> CargoArgs {
     let mut iterator = cargo_args.into_iter();
     while let Some(arg) = iterator.next() {
         match arg.as_str() {
-            // Skip `--release`, we will pass it by ourselves.
-            "--release" => {
-                log::warn!("Do not pass `--release` manually, it will be added automatically by `cargo-pgo`");
-            }
             // Skip `--message-format`, we need it to be JSON.
             "--message-format" => {
                 log::warn!("Do not pass `--message-format` manually, it will be added automatically by `cargo-pgo`");

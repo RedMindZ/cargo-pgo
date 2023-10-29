@@ -1,5 +1,5 @@
 use crate::ensure_directory;
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf, Path};
 
 pub struct CargoContext {
     target_directory: PathBuf,
