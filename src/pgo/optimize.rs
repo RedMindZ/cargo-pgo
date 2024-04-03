@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -21,13 +22,12 @@ use crate::utils::file::{gather_files_with_extension, hash_file, move_file};
 use crate::utils::str::pluralize;
 use crate::workspace::CargoContext;
 
-#[derive(clap::Parser, Debug)]
-#[clap(trailing_var_arg(true))]
+#[derive(Debug)]
 pub struct PgoOptimizeArgs {
     /// Cargo command that will be used for PGO-optimized compilation.
-    #[clap(value_enum, default_value = "build")]
     pub command: CargoCommand,
     pub cargo_args: Vec<String>,
+    pub cargo_env: HashMap<String, String>,
 }
 
 /// Merges PGO profiles and creates RUSTFLAGS that use them.
@@ -50,7 +50,7 @@ pub fn pgo_optimize(ctx: &CargoContext, args: PgoOptimizeArgs) -> anyhow::Result
 
     let flags = prepare_pgo_optimization_flags(&pgo_env, &pgo_dir)?;
 
-    let mut cargo = cargo_command_with_flags(args.command, &flags, args.cargo_args)?;
+    let mut cargo = cargo_command_with_flags(args.command, &flags, args.cargo_args, args.cargo_env)?;
 
     let mut counter = MissingProfileCounter::default();
     for message in cargo.messages() {

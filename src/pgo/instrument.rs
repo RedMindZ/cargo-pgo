@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::build::{
     cargo_command_with_flags, get_artifact_kind, handle_metadata_message, CargoCommand,
 };
@@ -7,30 +9,31 @@ use crate::workspace::CargoContext;
 use cargo_metadata::Message;
 use colored::Colorize;
 
-#[derive(clap::Parser, Debug)]
-#[clap(trailing_var_arg(true))]
+#[derive(Debug)]
 pub struct PgoInstrumentArgs {
     /// Cargo command that will be used for PGO-instrumented compilation.
-    #[clap(value_enum, default_value = "build")]
     pub command: CargoCommand,
 
     /// Do not remove profiles that were gathered during previous runs.
-    #[clap(long, takes_value = false)]
     pub keep_profiles: bool,
 
     /// Additional arguments that will be passed to the executed `cargo` command.
     pub cargo_args: Vec<String>,
+
+    /// The environment variables that will be set for the executed `cargo` command.
+    pub cargo_env: HashMap<String, String>,
 }
 
-#[derive(clap::Parser, Debug)]
-#[clap(trailing_var_arg(true))]
+#[derive(Debug)]
 pub struct PgoInstrumentShortcutArgs {
     /// Do not remove profiles that were gathered during previous runs.
-    #[clap(long, takes_value = false)]
     keep_profiles: bool,
 
     /// Additional arguments that will be passed to the executed `cargo` command.
     cargo_args: Vec<String>,
+
+    /// The environment variables that will be set for the executed `cargo` command.
+    cargo_env: HashMap<String, String>,
 }
 
 impl PgoInstrumentShortcutArgs {
@@ -38,12 +41,14 @@ impl PgoInstrumentShortcutArgs {
         let PgoInstrumentShortcutArgs {
             keep_profiles,
             cargo_args,
+            cargo_env: env,
         } = self;
 
         PgoInstrumentArgs {
             command,
             keep_profiles,
             cargo_args,
+            cargo_env: env,
         }
     }
 }
@@ -62,7 +67,7 @@ pub fn pgo_instrument(ctx: &CargoContext, args: PgoInstrumentArgs) -> anyhow::Re
     );
 
     let flags = format!("-Cprofile-generate={}", pgo_dir.display());
-    let mut cargo = cargo_command_with_flags(args.command, &flags, args.cargo_args)?;
+    let mut cargo = cargo_command_with_flags(args.command, &flags, args.cargo_args, args.cargo_env)?;
 
     for message in cargo.messages() {
         let message = message?;

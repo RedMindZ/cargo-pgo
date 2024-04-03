@@ -37,18 +37,17 @@ pub fn cargo_command_with_flags(
     command: CargoCommand,
     flags: &str,
     cargo_args: Vec<String>,
+    mut cargo_env: HashMap<String, String>,
 ) -> anyhow::Result<RunningCargo> {
-    let mut encoded_flags = std::env::var("CARGO_ENCODED_RUSTFLAGS").unwrap_or_default();
-    if !encoded_flags.is_empty() {
+    if let Some(encoded_flags) = cargo_env.get_mut("CARGO_ENCODED_RUSTFLAGS") {
         // CARGO_ENCODED_RUSTFLAGS uses the ASCII Separator (31) character instead of spaces
         encoded_flags.push('');
+        encoded_flags.push_str(flags);
+    } else {
+        cargo_env.insert("CARGO_ENCODED_RUSTFLAGS".into(), flags.into());
     }
-    encoded_flags.push_str(flags);
 
-    let mut env = HashMap::default();
-    env.insert("CARGO_ENCODED_RUSTFLAGS".to_string(), encoded_flags);
-
-    let mut child = cargo_command(command, cargo_args, env)?;
+    let mut child = cargo_command(command, cargo_args, cargo_env)?;
     let stdout = child.stdout.take().unwrap();
     Ok(RunningCargo {
         child,

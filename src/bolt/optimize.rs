@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -19,17 +20,15 @@ use crate::utils::file::gather_files_with_extension;
 use crate::utils::str::capitalize;
 use crate::workspace::CargoContext;
 
-#[derive(clap::Parser, Debug)]
-#[clap(trailing_var_arg(true))]
+#[derive(Debug)]
 pub struct BoltOptimizeArgs {
     /// Optimize a PGO-optimized binary. To use this, you must already have PGO profiles on disk.
     /// Use this flag only if you have also used it for `cargo pgo bolt build`.
-    #[clap(long)]
     with_pgo: bool,
-    #[clap(flatten)]
     bolt_args: BoltArgs,
     /// Additional arguments that will be passed to `cargo build`.
     cargo_args: Vec<String>,
+    cargo_env: HashMap<String, String>,
 }
 
 pub fn bolt_optimize(ctx: CargoContext, args: BoltOptimizeArgs) -> anyhow::Result<()> {
@@ -37,7 +36,7 @@ pub fn bolt_optimize(ctx: CargoContext, args: BoltOptimizeArgs) -> anyhow::Resul
     let bolt_env = find_bolt_env()?;
 
     let flags = bolt_pgo_rustflags(&ctx, args.with_pgo)?;
-    let mut cargo = cargo_command_with_flags(CargoCommand::Build, &flags, args.cargo_args)?;
+    let mut cargo = cargo_command_with_flags(CargoCommand::Build, &flags, args.cargo_args, args.cargo_env)?;
 
     for message in cargo.messages() {
         let message = message?;

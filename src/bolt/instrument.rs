@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use cargo_metadata::camino::Utf8PathBuf;
@@ -16,22 +17,21 @@ use crate::utils::str::capitalize;
 use crate::workspace::CargoContext;
 use crate::{clear_directory, run_command};
 
-#[derive(clap::Parser, Debug)]
-#[clap(trailing_var_arg(true))]
+#[derive(Debug)]
 pub struct BoltInstrumentArgs {
     /// Instrument a PGO-optimized binary. To use this, you must already have PGO profiles on disk.
     /// Later also pass the same flag to `cargo pgo bolt optimize`.
-    #[clap(long)]
     with_pgo: bool,
 
     /// Do not remove profiles that were gathered during previous runs.
-    #[clap(long, takes_value = false)]
     keep_profiles: bool,
 
-    #[clap(flatten)]
     bolt_args: BoltArgs,
     /// Additional arguments that will be passed to `cargo build`.
     cargo_args: Vec<String>,
+
+    /// The environment variables that will be set for the executed `cargo` command.
+    cargo_env: HashMap<String, String>,
 }
 
 pub fn bolt_instrument(ctx: CargoContext, args: BoltInstrumentArgs) -> anyhow::Result<()> {
@@ -49,7 +49,7 @@ pub fn bolt_instrument(ctx: CargoContext, args: BoltInstrumentArgs) -> anyhow::R
     );
 
     let flags = bolt_pgo_rustflags(&ctx, args.with_pgo)?;
-    let mut cargo = cargo_command_with_flags(CargoCommand::Build, &flags, args.cargo_args)?;
+    let mut cargo = cargo_command_with_flags(CargoCommand::Build, &flags, args.cargo_args, args.cargo_env)?;
 
     for message in cargo.messages() {
         let message = message?;
